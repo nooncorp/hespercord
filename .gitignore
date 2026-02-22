@@ -1,0 +1,12 @@
+# Env with secrets (local only)
+discord.env
+
+.ssh/
+
+# SQLite DB (local dev)
+hespercord.db
+hespercord.db-shm
+hespercord.db-wal
+*.db
+*.db-shm
+*.db-wal
