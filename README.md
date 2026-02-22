@@ -1,9 +1,9 @@
-# hespercord (angelcord prototype)
+# hespercord (angelcord)
 
 Because Discord should be a commodity, and messages should be encrypted on the
 server.
 
-> [!NOTE]
+> [!INFO]
 > This README is AI-written for now, but gives a decent overview. I will
 > rewrite it soon.
 
@@ -17,50 +17,50 @@ possible—you could swap the backend provider freely.
 ## Architecture
 
 **Server.** A single Go program: REST API, WebSockets for live updates,
-optional *Discord OAuth for the web app. It stores ciphertext blobs, sealed key
-bundles, *and user/session data. It does *not* do encryption or decryption.
-Guild *membership and metadata (name, owner, who’s in) are behind a
-`GuildState` *interface—today that’s SQLite, with the idea that later it could
-be a Solana *program or similar so the relay stays a simple message bus.
+optional *Discord OAuth* for the web app. It stores ciphertext blobs, sealed
+key bundles, and user/session data. It does *not* do encryption or decryption.
+Guild *membership* and metadata (name, owner, who’s in) are behind a
+`GuildState` *interface*—today that’s SQLite, with the idea that later it could
+be a Solana *program* or similar so the relay stays a simple message bus.
 
 **Clients.** Two: a Go CLI (for testing and API-level use) and a React/Vite web
-*app. Both do all crypto locally. The server only sees base64 ciphertext and
-*routing info (guild id, sender/recipient public keys).
+app. Both do all crypto locally. The server only sees base64 ciphertext and
+*routing info* (guild id, sender/recipient public keys).
 
 **Guilds and channels.** One guild = one symmetric key. Channels are not
-*first-class on the server: the client encrypts a payload that includes
-*`channel_id`, `content`, a sequence number, and a signature. The server stores
-one opaque blob per message; channel list and names live only on the client
-(or, in a future design, on-chain). The server *does* assign and store a
-timestamp per message and returns messages ordered by that time—it just never
-sees the content or channel. New members get *the guild key sealed under their
-X25519 public key by an existing member *(usually the inviter); when someone is
-kicked, the server stops letting them *read/write and they no longer get new
-sealed keys—we don’t rotate the guild key *on kick, so the model is “one
-permanent key, revocation = access control.”
+*first-class* on the server: the client encrypts a payload that includes
+channel_id, content, a sequence number, and a signature. The server stores one
+opaque blob per message; channel list and names live only on the client (or, in
+a future design, on-chain). The server *does* assign and store a timestamp per
+message and returns messages ordered by that time—it just never sees the
+content or channel. New members get the guild key sealed under their X25519
+public key by an existing member (usually the inviter); when someone is kicked,
+the server stops letting them read/write and they no longer get new sealed
+keys—we don’t rotate the guild key *on kick*, so the model is “one permanent
+key, revocation = access control.”
 
 **DMs.** One-to-one messages use the real Signal Protocol: X3DH for session
-*setup, the Double Ratchet for encryption, and PQXDH (Kyber) in the pre-key
-*bundle. The web app uses `@getmaapp/signal-wasm` (libsignal compiled to WASM).
-*Session and pre-key state live in IndexedDB. The Signal identity is derived
-*from the same Ed25519/X25519 app identity so one login and one key backup
-*covers both guild auth and DM identity.
+setup, the Double Ratchet for encryption, and PQXDH (Kyber) in the pre-key
+bundle. The web app uses `@getmaapp/signal-wasm` (libsignal compiled to WASM).
+Session and pre-key state live in IndexedDB. The Signal identity is derived
+from the same Ed25519/X25519 app identity so one login and one key backup
+covers both guild auth and DM identity.
 
 ## Crypto choices
 
 **Identity.** Ed25519 for “who you are”: API auth (CLI signs requests, web uses
-*JWT that carries your public key), and signing the inner guild message payload.
-*X25519 is derived from the same keypair (standard Ed25519→Curve25519 mapping)
-*and used for ECDH when sealing guild keys and, in the web client, as the Signal
-*long-term identity. So there’s a single root keypair; everything else branches
-*from it.
+*JWT* that carries your public key), and signing the inner guild message
+payload. X25519 is derived from the same keypair (standard Ed25519→Curve25519
+mapping) and used for ECDH when sealing guild keys and, in the web client, as
+the Signal *long-term identity*. So there’s a single root keypair; everything
+else branches from it.
 
 **Guild messages.** One 32-byte key per guild. Messages are encrypted with
-*XChaCha20-Poly1305. The plaintext the client encrypts is a small JSON object:
-*channel id, body, a per-sender sequence number, and an Ed25519 signature over
-*that triple. Receivers verify the signature and enforce that sequence numbers
-*only go forward for each sender—that gives replay and reorder detection without
-*a full ratchet. The server never sees plaintext or channel names.
+*XChaCha20-Poly1305*. The plaintext the client encrypts is a small JSON object:
+channel id, body, a per-sender sequence number, and an Ed25519 signature over
+that triple. Receivers verify the signature and enforce that sequence numbers
+only go forward for each sender—that gives replay and reorder detection without
+a full ratchet. The server never sees plaintext or channel names.
 
 **Guild key distribution.** On guild creation the creator generates the 32-byte
 guild key client-side. The first sealed key is for *themselves*: they run ECDH
@@ -75,10 +75,10 @@ stores these sealed blobs and hands them to the right recipient when they ask
 for their keys. No plaintext guild key on the server.
 
 **DMs.** Full Signal: X3DH (with an optional one-time pre-key and a signed
-*pre-key, plus Kyber) so the first message establishes a session without an
-*interactive handshake; then the Double Ratchet for forward secrecy and
-*post-compromise security on the wire. We’re not doing anything custom here—we
-*rely on libsignal’s design and the WASM build that wraps it.
+*pre-key*, plus Kyber) so the first message establishes a session without an
+interactive handshake; then the Double Ratchet for forward secrecy and
+post-compromise security on the wire. We’re not doing anything custom here—we
+rely on libsignal’s design and the WASM build that wraps it.
 
 ## How this lines up with other designs
 
