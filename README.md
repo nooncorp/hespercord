@@ -1,4 +1,4 @@
-# hespercord (angelcord)
+# hespercord (angelcord prototype)
 
 Because Discord should be a commodity, and messages should be encrypted on the
 server.
