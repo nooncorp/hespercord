@@ -3,7 +3,7 @@
 Because Discord should be a commodity, and messages should be encrypted on the
 server.
 
-> [!INFO]
+> [!NOTE]
 > This README is AI-written for now, but gives a decent overview. I will
 > rewrite it soon.
 
