@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS sealed_keys (
 CREATE TABLE IF NOT EXISTS messages (
 	id             TEXT PRIMARY KEY,
 	guild_id       TEXT NOT NULL,
-	sender_pub     TEXT NOT NULL,
 	ciphertext_b64 TEXT NOT NULL,
 	created_at     DATETIME NOT NULL
 );
@@ -229,18 +228,17 @@ func (d *DB) RemoveKeys(guildID, pubKey string) {
 
 // --- Messages ---
 
-func (d *DB) StoreMessage(guildID, senderPub, ciphertextB64 string) (*protocol.MessageEnvelope, error) {
+func (d *DB) StoreMessage(guildID, ciphertextB64 string) (*protocol.MessageEnvelope, error) {
 	now := time.Now()
 	env := protocol.MessageEnvelope{
 		ID:            uuid.New().String(),
 		GuildID:       guildID,
-		SenderPub:     senderPub,
 		CiphertextB64: ciphertextB64,
 		Timestamp:     now,
 	}
 	_, err := d.db.Exec(
-		`INSERT INTO messages (id, guild_id, sender_pub, ciphertext_b64, created_at) VALUES (?, ?, ?, ?, ?)`,
-		env.ID, guildID, senderPub, ciphertextB64, now,
+		`INSERT INTO messages (id, guild_id, ciphertext_b64, created_at) VALUES (?, ?, ?, ?)`,
+		env.ID, guildID, ciphertextB64, now,
 	)
 	if err != nil {
 		return nil, err
@@ -253,11 +251,11 @@ func (d *DB) ListMessages(guildID string, after time.Time) []protocol.MessageEnv
 	var err error
 	if after.IsZero() {
 		rows, err = d.db.Query(
-			`SELECT id, guild_id, sender_pub, ciphertext_b64, created_at FROM messages WHERE guild_id = ? ORDER BY created_at`,
+			`SELECT id, guild_id, ciphertext_b64, created_at FROM messages WHERE guild_id = ? ORDER BY created_at`,
 			guildID)
 	} else {
 		rows, err = d.db.Query(
-			`SELECT id, guild_id, sender_pub, ciphertext_b64, created_at FROM messages WHERE guild_id = ? AND created_at > ? ORDER BY created_at`,
+			`SELECT id, guild_id, ciphertext_b64, created_at FROM messages WHERE guild_id = ? AND created_at > ? ORDER BY created_at`,
 			guildID, after)
 	}
 	if err != nil {
@@ -267,7 +265,7 @@ func (d *DB) ListMessages(guildID string, after time.Time) []protocol.MessageEnv
 	var out []protocol.MessageEnvelope
 	for rows.Next() {
 		var m protocol.MessageEnvelope
-		rows.Scan(&m.ID, &m.GuildID, &m.SenderPub, &m.CiphertextB64, &m.Timestamp)
+		rows.Scan(&m.ID, &m.GuildID, &m.CiphertextB64, &m.Timestamp)
 		out = append(out, m)
 	}
 	return out

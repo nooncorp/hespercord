@@ -201,6 +201,7 @@ func (s *Session) SendMessage(guildID, channelID, content string) error {
 	sig := s.Identity.SignMessage(channelID, content, seq)
 
 	inner := protocol.MessageInner{
+		SenderPub: s.PubKeyB64(),
 		ChannelID: channelID,
 		Content:   content,
 		Seq:       seq,
@@ -265,7 +266,6 @@ func (s *Session) ReadMessages(guildID, channelID string) ([]DecryptedMessage, e
 func (s *Session) decryptEnvelope(env protocol.MessageEnvelope) DecryptedMessage {
 	dm := DecryptedMessage{
 		ID:        env.ID,
-		SenderPub: env.SenderPub,
 		Timestamp: env.Timestamp,
 	}
 
@@ -293,14 +293,16 @@ func (s *Session) decryptEnvelope(env protocol.MessageEnvelope) DecryptedMessage
 		return dm
 	}
 
-	senderEdPub, err := crypto.PubKeyFromBase64(env.SenderPub)
+	dm.SenderPub = inner.SenderPub
+
+	senderEdPub, err := crypto.PubKeyFromBase64(inner.SenderPub)
 	if err == nil {
 		sigBytes, err := base64.StdEncoding.DecodeString(inner.Sig)
 		if err != nil {
 			dm.Error = "invalid sig encoding"
 			return dm
 		}
-		payload := crypto.MessageSigningPayload(inner.ChannelID, inner.Content, inner.Seq)
+		payload := crypto.MessageSigningPayload(inner.SenderPub, inner.ChannelID, inner.Content, inner.Seq)
 		if !crypto.VerifySignature(senderEdPub, payload, sigBytes) {
 			dm.Error = "signature verification failed"
 			return dm
@@ -310,12 +312,12 @@ func (s *Session) decryptEnvelope(env protocol.MessageEnvelope) DecryptedMessage
 	if s.peerSeq[env.GuildID] == nil {
 		s.peerSeq[env.GuildID] = make(map[string]uint64)
 	}
-	lastSeq, seen := s.peerSeq[env.GuildID][env.SenderPub]
+	lastSeq, seen := s.peerSeq[env.GuildID][inner.SenderPub]
 	if seen && inner.Seq <= lastSeq {
 		dm.Error = fmt.Sprintf("seq %d <= last seen %d (possible replay/reorder)", inner.Seq, lastSeq)
 		return dm
 	}
-	s.peerSeq[env.GuildID][env.SenderPub] = inner.Seq
+	s.peerSeq[env.GuildID][inner.SenderPub] = inner.Seq
 
 	dm.ChannelID = inner.ChannelID
 	dm.Content = inner.Content

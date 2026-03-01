@@ -75,7 +75,7 @@ type Storage interface {
 	StoreKeys(guildID, recipientPub string, keys []protocol.SealedKeyEntry)
 	GetKeys(guildID, recipientPub string) []protocol.SealedKeyEntry
 	RemoveKeys(guildID, pubKey string)
-	StoreMessage(guildID, senderPub, ciphertextB64 string) (*protocol.MessageEnvelope, error)
+	StoreMessage(guildID, ciphertextB64 string) (*protocol.MessageEnvelope, error)
 	ListMessages(guildID string, after time.Time) []protocol.MessageEnvelope
 	StoreDMMessage(senderPub, recipientPub, ciphertextB64 string, messageType int) (*protocol.DMMessage, error)
 	ListDMMessages(pub1, pub2 string, after time.Time) []protocol.DMMessage
@@ -407,7 +407,7 @@ func (h *handlers) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := h.store.StoreMessage(guildID, senderPub, req.CiphertextB64)
+	env, err := h.store.StoreMessage(guildID, req.CiphertextB64)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
