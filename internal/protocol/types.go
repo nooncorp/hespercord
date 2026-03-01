@@ -72,7 +72,6 @@ type SendMessageRequest struct {
 type MessageEnvelope struct {
 	ID            string    `json:"id"`
 	GuildID       string    `json:"guild_id"`
-	SenderPub     string    `json:"sender_pub"`
 	CiphertextB64 string    `json:"ciphertext_b64"`
 	Timestamp     time.Time `json:"timestamp"`
 }
@@ -80,10 +79,11 @@ type MessageEnvelope struct {
 // MessageInner is the JSON structure that the client encrypts before sending.
 // The server never sees this — it only exists inside the ciphertext blob.
 type MessageInner struct {
+	SenderPub string `json:"sender_pub"` // Ed25519 pubkey of sender
 	ChannelID string `json:"channel_id"`
 	Content   string `json:"content"`
 	Seq       uint64 `json:"seq"`
-	Sig       string `json:"sig"` // base64 Ed25519 signature of (channel_id + content + seq)
+	Sig       string `json:"sig"` // base64 Ed25519 signature of (sender_pub + channel_id + content + seq)
 }
 
 // ---------------------------------------------------------------------------

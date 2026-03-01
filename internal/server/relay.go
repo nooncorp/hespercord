@@ -108,13 +108,12 @@ func (s *RelayStore) RemoveKeys(guildID, pubKey string) {
 // Messages
 // ---------------------------------------------------------------------------
 
-func (s *RelayStore) StoreMessage(guildID, senderPub, ciphertextB64 string) (*protocol.MessageEnvelope, error) {
+func (s *RelayStore) StoreMessage(guildID, ciphertextB64 string) (*protocol.MessageEnvelope, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	env := protocol.MessageEnvelope{
 		ID:            uuid.New().String(),
 		GuildID:       guildID,
-		SenderPub:     senderPub,
 		CiphertextB64: ciphertextB64,
 		Timestamp:     time.Now(),
 	}

@@ -120,15 +120,17 @@ func EdPublicToX25519(edPub ed25519.PublicKey) ([32]byte, error) {
 }
 
 // MessageSigningPayload builds the payload that gets signed inside encrypted
-// messages: channel_id + content + seq (for tamper detection).
-func MessageSigningPayload(channelID, content string, seq uint64) []byte {
-	payload := fmt.Sprintf("%s\n%s\n%d", channelID, content, seq)
+// messages: sender_pub + channel_id + content + seq (for tamper detection).
+// Including sender_pub prevents a rogue server from reassigning messages to a
+// different sender — the sig now covers sender identity.
+func MessageSigningPayload(senderPub, channelID, content string, seq uint64) []byte {
+	payload := fmt.Sprintf("%s\n%s\n%s\n%d", senderPub, channelID, content, seq)
 	return []byte(payload)
 }
 
 // SignMessage signs the inner message fields with the Ed25519 private key.
 func (id *Identity) SignMessage(channelID, content string, seq uint64) []byte {
-	payload := MessageSigningPayload(channelID, content, seq)
+	payload := MessageSigningPayload(id.PubKeyBase64(), channelID, content, seq)
 	sig, _ := id.EdPriv.Sign(rand.Reader, payload, crypto.Hash(0))
 	return sig
 }
